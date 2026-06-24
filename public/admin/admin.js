@@ -178,16 +178,24 @@ async function openDetail(id) {
   $("#regeneratePdf").onclick = regeneratePdf;
   $("#saveStatus").onclick = saveStatus;
   $("#addNote").onclick = addNote;
-  $("#detailDialog").showModal();
+  if (!$("#detailDialog").open) $("#detailDialog").showModal();
 }
 
 async function regeneratePdf(event) {
-  event.target.disabled = true;
+  const button = event.target;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "جارٍ إنشاء PDF...";
   try {
-    await api("admin-regenerate-pdf", { method: "POST", body: JSON.stringify({ submissionId: currentSubmissionId }) });
-    alert("تمت إضافة ملف PDF إلى قائمة الإنشاء. حدّث الصفحة بعد لحظات.");
+    const result = await api("admin-regenerate-pdf", { method: "POST", body: JSON.stringify({ submissionId: currentSubmissionId }) });
+    alert("تم إنشاء ملف PDF بنجاح.");
+    await openDetail(currentSubmissionId);
+    if (result.pdfUrl) window.open(result.pdfUrl, "_blank", "noopener");
+  } catch (error) {
+    alert(`تعذر إنشاء PDF: ${error.message}`);
   } finally {
-    event.target.disabled = false;
+    button.disabled = false;
+    button.textContent = originalText;
   }
 }
 

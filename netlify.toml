@@ -6,8 +6,6 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
-
-[functions."generate-pdf-background"]
   included_files = ["public/assets/**"]
 
 [[redirects]]

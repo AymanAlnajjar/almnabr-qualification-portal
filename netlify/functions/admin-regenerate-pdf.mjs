@@ -1,25 +1,36 @@
 import { errorResponse, HttpError, json, preflight, readJson } from "./_shared/http.mjs";
+import { generatePdfForSubmission } from "./_shared/pdf-generator.mjs";
 import { requireAdmin } from "./_shared/supabase.mjs";
 
 export default async function handler(request) {
   const options = preflight(request);
   if (options) return options;
+
+  let submissionId;
   try {
     if (request.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED", "Method not allowed.");
     const { supabase } = await requireAdmin(request);
-    const { submissionId } = await readJson(request);
+    ({ submissionId } = await readJson(request));
     if (!/^[0-9a-f-]{36}$/i.test(submissionId || "")) throw new HttpError(400, "INVALID_ID", "Invalid submission ID.");
-    await supabase.from("submissions").update({ pdf_state: "pending", pdf_error: null }).eq("id", submissionId);
 
-    const baseUrl = process.env.URL || process.env.SITE_URL || new URL(request.url).origin;
-    const queued = await fetch(`${baseUrl}/.netlify/functions/generate-pdf-background`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-internal-secret": process.env.INTERNAL_FUNCTION_SECRET || "" },
-      body: JSON.stringify({ submissionId })
+    const submission = await generatePdfForSubmission({ supabase, submissionId });
+    const { data: signed } = await supabase.storage.from("qualification-files").createSignedUrl(submission.pdf_path, 900, {
+      download: `${submission.reference}.pdf`
     });
-    if (!queued.ok) throw new HttpError(502, "QUEUE_FAILED", "Could not queue PDF generation.");
-    return json(202, { ok: true });
+
+    return json(200, { ok: true, submission, pdfUrl: signed?.signedUrl || "" });
   } catch (error) {
+    try {
+      if (submissionId) {
+        const { supabase } = await requireAdmin(request);
+        await supabase
+          .from("submissions")
+          .update({ pdf_state: "failed", pdf_error: String(error.message || error).slice(0, 2000) })
+          .eq("id", submissionId);
+      }
+    } catch {
+      // Preserve the original error response.
+    }
     return errorResponse(error);
   }
 }
