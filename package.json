@@ -1,0 +1,20 @@
+{
+  "name": "almnabr-qualification-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "check": "node --test tests/*.test.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^138.0.2",
+    "@supabase/supabase-js": "^2.57.4",
+    "puppeteer-core": "^24.17.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "netlify-cli": "^23.5.0"
+  }
+}

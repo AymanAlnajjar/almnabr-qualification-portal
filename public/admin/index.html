@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة طلبات التأهيل - المنابر</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <main>
+    <section id="loginView" class="login-card">
+      <img src="/assets/logo.png" alt="المنابر">
+      <h1>إدارة طلبات التأهيل</h1>
+      <p>سجّل الدخول بحساب الإدارة.</p>
+      <form id="loginForm">
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">كلمة المرور</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button>تسجيل الدخول</button>
+        <p id="loginError" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="appView" hidden>
+      <header class="topbar">
+        <div class="brand"><img src="/assets/logo.png" alt=""><div><strong>طلبات التأهيل</strong><small>المنابر للاستشارات الهندسية</small></div></div>
+        <button id="logoutBtn" class="secondary">تسجيل الخروج</button>
+      </header>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="بحث بالاسم أو البريد أو رقم الطلب...">
+        <select id="statusFilter">
+          <option value="">كل الحالات</option><option value="submitted">جديد</option><option value="under_review">قيد المراجعة</option>
+          <option value="qualified">مؤهل</option><option value="rejected">مرفوض</option><option value="archived">مؤرشف</option>
+        </select>
+        <button id="refreshBtn" class="secondary">تحديث</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>المكتب</th><th>التاريخ</th><th>الصور</th><th>الحالة</th><th>PDF</th></tr></thead><tbody id="submissionRows"></tbody></table></div>
+        <p id="emptyState" class="empty" hidden>لا توجد طلبات مطابقة.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="detailDialog">
+    <button id="closeDialog" class="dialog-close" aria-label="إغلاق">×</button>
+    <div id="detailContent"></div>
+  </dialog>
+  <script src="/runtime-config.js"></script>
+  <script type="module" src="/admin/admin.js"></script>
+</body>
+</html>

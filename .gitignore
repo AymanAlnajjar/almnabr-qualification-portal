@@ -1,0 +1,8 @@
+node_modules/
+.netlify/
+.env
+.env.*.local
+tmp/
+public/runtime-config.js
+npm-debug.log*
+.netlify-dev*.log
