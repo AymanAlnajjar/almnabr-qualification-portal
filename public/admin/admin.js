@@ -1,11 +1,20 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const cfg = window.QUALIFICATION_CONFIG || {};
-const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 const $ = (selector) => document.querySelector(selector);
 const loginView = $("#loginView");
 const appView = $("#appView");
 let currentSubmissionId = "";
+
+if (!window.supabase?.createClient) {
+  $("#loginError").textContent = "تعذر تحميل مكتبة تسجيل الدخول. يرجى تحديث الصفحة أو التواصل مع الدعم.";
+  throw new Error("Supabase browser client is not loaded.");
+}
+
+if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+  $("#loginError").textContent = "إعدادات Supabase غير مكتملة في Netlify. تأكد من SUPABASE_URL و SUPABASE_ANON_KEY.";
+  throw new Error("Missing public Supabase runtime configuration.");
+}
+
+const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
 const statusLabels = { submitted:"جديد",under_review:"قيد المراجعة",qualified:"مؤهل",rejected:"مرفوض",archived:"مؤرشف" };
 const pdfLabels = { pending:"بانتظار الإنشاء",generating:"جارٍ الإنشاء",ready:"جاهز",failed:"فشل" };

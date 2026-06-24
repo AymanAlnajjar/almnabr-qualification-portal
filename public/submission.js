@@ -26,13 +26,21 @@
     box.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  async function readJsonResponse(response) {
+    try {
+      return await response.json();
+    } catch {
+      return {};
+    }
+  }
+
   async function uploadPhoto(upload, file) {
     const response = await fetch(upload.signedUrl, {
       method: "PUT",
       headers: { "content-type": file.type, "x-upsert": "false" },
       body: file
     });
-    if (!response.ok) throw new Error(`PHOTO_UPLOAD_FAILED:${file.name}`);
+    if (!response.ok) throw new Error(`فشل رفع الصورة: ${file.name}`);
   }
 
   window.getQualificationFiles = () => uploadedFiles.map((entry) => entry.file);
@@ -45,8 +53,10 @@
 
     try {
       const files = window.getQualificationFiles();
-      if (files.length > MAX_PHOTOS) throw new Error("TOO_MANY_PHOTOS");
-      if (files.some((file) => file.size > MAX_PHOTO_BYTES)) throw new Error("PHOTO_TOO_LARGE");
+      if (files.length > MAX_PHOTOS) throw new Error(`يمكن رفع ${MAX_PHOTOS} صور كحد أقصى.`);
+      if (files.some((file) => file.size > MAX_PHOTO_BYTES)) {
+        throw new Error(`حجم الصورة الواحدة يجب ألا يتجاوز ${Math.round(MAX_PHOTO_BYTES / 1024 / 1024)} ميجابايت.`);
+      }
 
       setButtonLoading(button, true, "جارٍ حفظ الطلب...");
       const formData = collectData();
@@ -62,8 +72,8 @@
           honeypot: document.getElementById("companyWebsiteHp")?.value || ""
         })
       });
-      const created = await createResponse.json();
-      if (!createResponse.ok) throw new Error(created?.error?.message || "CREATE_FAILED");
+      const created = await readJsonResponse(createResponse);
+      if (!createResponse.ok) throw new Error(created?.error?.message || `فشل إنشاء الطلب (${createResponse.status}).`);
 
       if (files.length) {
         setButtonLoading(button, true, `جارٍ رفع الصور (0/${files.length})...`);
@@ -79,8 +89,8 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ submissionId: created.submission.id })
       });
-      const finalized = await finalizeResponse.json();
-      if (!finalizeResponse.ok) throw new Error(finalized?.error?.message || "FINALIZE_FAILED");
+      const finalized = await readJsonResponse(finalizeResponse);
+      if (!finalizeResponse.ok) throw new Error(finalized?.error?.message || `فشل تأكيد الطلب (${finalizeResponse.status}).`);
 
       document.getElementById("formWrap").style.display = "none";
       document.getElementById("success-screen").style.display = "block";
@@ -92,11 +102,7 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error(error);
-      const messages = {
-        TOO_MANY_PHOTOS: `يمكن رفع ${MAX_PHOTOS} صور كحد أقصى.`,
-        PHOTO_TOO_LARGE: `حجم الصورة الواحدة يجب ألا يتجاوز ${Math.round(MAX_PHOTO_BYTES / 1024 / 1024)} ميجابايت.`
-      };
-      showSubmitError(messages[error.message] || "لم يكتمل إرسال الطلب. لم يتم عرض رسالة نجاح، ويمكنكم المحاولة مرة أخرى.");
+      showSubmitError(`لم يكتمل إرسال الطلب: ${error.message}`);
       setButtonLoading(button, false);
     }
   };
