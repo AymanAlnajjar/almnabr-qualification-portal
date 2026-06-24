@@ -30,6 +30,23 @@ export async function requireAdmin(request) {
     .eq("user_id", userData.user.id)
     .maybeSingle();
 
-  if (!membership) throw new HttpError(403, "ADMIN_ONLY", "ليس لديك صلاحية إدارة الطلبات.");
-  return { supabase, user: userData.user, membership };
+  if (membership) return { supabase, user: userData.user, membership };
+
+  const allowedAdminEmails = (process.env.ADMIN_EMAIL || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  const userEmail = (userData.user.email || "").toLowerCase();
+  if (allowedAdminEmails.includes(userEmail)) {
+    const displayName = userData.user.user_metadata?.name || userData.user.email;
+    const { data: insertedMembership, error: insertError } = await supabase
+      .from("admin_users")
+      .upsert({ user_id: userData.user.id, display_name: displayName }, { onConflict: "user_id" })
+      .select("user_id, display_name")
+      .single();
+    if (insertError) throw insertError;
+    return { supabase, user: userData.user, membership: insertedMembership };
+  }
+
+  throw new HttpError(403, "ADMIN_ONLY", "ليس لديك صلاحية إدارة الطلبات.");
 }

@@ -31,14 +31,24 @@ async function applySession() {
   const signedIn = Boolean(data.session);
   loginView.hidden = signedIn;
   appView.hidden = !signedIn;
-  if (signedIn) await loadSubmissions();
+  if (signedIn) {
+    try {
+      await loadSubmissions();
+      $("#loginError").textContent = "";
+    } catch (error) {
+      $("#loginError").textContent = error.message;
+      await supabase.auth.signOut();
+      loginView.hidden = false;
+      appView.hidden = true;
+    }
+  }
 }
 
 $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("#loginError").textContent = "";
   const { error } = await supabase.auth.signInWithPassword({ email: $("#email").value, password: $("#password").value });
-  if (error) $("#loginError").textContent = "تعذر تسجيل الدخول. راجع البريد وكلمة المرور.";
+  if (error) $("#loginError").textContent = `تعذر تسجيل الدخول: ${error.message}`;
   else await applySession();
 });
 
