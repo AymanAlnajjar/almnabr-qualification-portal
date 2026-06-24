@@ -58,16 +58,20 @@ export default async function handler(request) {
       to_status: "submitted"
     });
 
-    const baseUrl = process.env.URL || process.env.SITE_URL || new URL(request.url).origin;
-    const generationResponse = await fetch(`${baseUrl}/.netlify/functions/generate-pdf-background`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-internal-secret": process.env.INTERNAL_FUNCTION_SECRET || ""
-      },
-      body: JSON.stringify({ submissionId })
-    });
-    if (!generationResponse.ok) console.error("Could not queue PDF generation", await generationResponse.text());
+    try {
+      const baseUrl = new URL(request.url).origin;
+      const generationResponse = await fetch(`${baseUrl}/.netlify/functions/generate-pdf-background`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-internal-secret": process.env.INTERNAL_FUNCTION_SECRET || ""
+        },
+        body: JSON.stringify({ submissionId })
+      });
+      if (!generationResponse.ok) console.error("Could not queue PDF generation", await generationResponse.text());
+    } catch (generationError) {
+      console.error("Could not queue PDF generation", generationError);
+    }
 
     return json(200, { ok: true, submission: finalized });
   } catch (error) {
