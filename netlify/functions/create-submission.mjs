@@ -54,7 +54,12 @@ export default async function handler(request) {
 
   try {
     if (request.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED", "طريقة الطلب غير مدعومة.");
-    const parsed = submissionSchema.safeParse(await readJson(request));
+    const requestBody = await readJson(request);
+    if (requestBody.honeypot) {
+      console.warn("Ignoring non-empty honeypot value on submission request.");
+      requestBody.honeypot = "";
+    }
+    const parsed = submissionSchema.safeParse(requestBody);
     if (!parsed.success) {
       throw new HttpError(422, "VALIDATION_FAILED", validationMessage(parsed.error), parsed.error.flatten());
     }
