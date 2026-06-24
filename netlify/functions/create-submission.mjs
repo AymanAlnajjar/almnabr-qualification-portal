@@ -8,6 +8,46 @@ function makeReference() {
   return `QF-${date}-${randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
+const fieldLabels = {
+  office_name: "اسم المكتب",
+  country: "الدولة",
+  city: "المدينة",
+  address: "العنوان",
+  phone: "الهاتف",
+  email: "البريد الإلكتروني",
+  founded: "سنة التأسيس",
+  legal_form: "الشكل القانوني",
+  rep_name: "اسم ممثل المكتب",
+  rep_title: "صفة ممثل المكتب",
+  rep_phone: "هاتف ممثل المكتب",
+  rep_email: "بريد ممثل المكتب",
+  authorized: "تفويض الممثل",
+  specializations: "التخصصات",
+  services_desc: "وصف الخدمات",
+  experience_years: "سنوات الخبرة",
+  project_types: "أنواع المشاريع",
+  engineers_total: "إجمالي المهندسين",
+  qualification: "المؤهل",
+  has_qms: "نظام الجودة",
+  software: "البرامج المستخدمة",
+  worked_sub: "العمل كمقاول باطن",
+  schedule_cap: "القدرة على الجداول المتسارعة",
+  team_work: "العمل ضمن الفرق",
+  sign_name: "اسم الموقّع",
+  sign_title: "صفة الموقّع",
+  sign_date: "تاريخ التوقيع",
+  photos: "الصور"
+};
+
+function validationMessage(error) {
+  const fields = [...new Set(error.issues.map((issue) => issue.path.join(".").replace(/^data\./, "")))]
+    .map((path) => fieldLabels[path] || path)
+    .slice(0, 6);
+  return fields.length
+    ? `يرجى مراجعة الحقول التالية: ${fields.join("، ")}.`
+    : "يرجى مراجعة الحقول المطلوبة.";
+}
+
 export default async function handler(request) {
   const options = preflight(request);
   if (options) return options;
@@ -16,7 +56,7 @@ export default async function handler(request) {
     if (request.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED", "طريقة الطلب غير مدعومة.");
     const parsed = submissionSchema.safeParse(await readJson(request));
     if (!parsed.success) {
-      throw new HttpError(422, "VALIDATION_FAILED", "يرجى مراجعة الحقول المطلوبة.", parsed.error.flatten());
+      throw new HttpError(422, "VALIDATION_FAILED", validationMessage(parsed.error), parsed.error.flatten());
     }
 
     const { data: formData, photos } = parsed.data;
