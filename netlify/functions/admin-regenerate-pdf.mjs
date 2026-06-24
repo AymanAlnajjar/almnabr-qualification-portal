@@ -13,7 +13,16 @@ export default async function handler(request) {
     ({ submissionId } = await readJson(request));
     if (!/^[0-9a-f-]{36}$/i.test(submissionId || "")) throw new HttpError(400, "INVALID_ID", "Invalid submission ID.");
 
-    const submission = await generatePdfForSubmission({ supabase, submissionId });
+    let submission;
+    try {
+      submission = await generatePdfForSubmission({ supabase, submissionId });
+    } catch (generationError) {
+      throw new HttpError(
+        500,
+        "PDF_GENERATION_FAILED",
+        `تعذر إنشاء PDF: ${generationError.message || "حدث خطأ غير متوقع."}`
+      );
+    }
     const { data: signed } = await supabase.storage.from("qualification-files").createSignedUrl(submission.pdf_path, 900, {
       download: `${submission.reference}.pdf`
     });
