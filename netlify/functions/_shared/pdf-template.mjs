@@ -7,12 +7,21 @@ const esc = (value) => String(value ?? "")
 
 const show = (value) => value === "" || value == null ? "-" : esc(value);
 
-function rows(items) {
-  return items.map(([label, value]) => `
-    <div class="datum">
-      <div class="datum-label">${esc(label)}</div>
-      <div class="datum-value">${show(value)}</div>
-    </div>`).join("");
+function fieldTable(items) {
+  const cells = [];
+  for (let index = 0; index < items.length; index += 2) {
+    const first = items[index];
+    const second = items[index + 1];
+    cells.push(`<tr>
+      <th>${esc(first[0])}</th><td>${show(first[1])}</td>
+      ${second ? `<th>${esc(second[0])}</th><td>${show(second[1])}</td>` : '<th></th><td></td>'}
+    </tr>`);
+  }
+  return `<table class="fields"><tbody>${cells.join("")}</tbody></table>`;
+}
+
+function paragraphField(label, value) {
+  return `<div class="paragraph-field"><h3>${esc(label)}</h3><div>${show(value)}</div></div>`;
 }
 
 function projectRows(data) {
@@ -27,95 +36,244 @@ function projectRows(data) {
   }).filter((project) => Object.values(project).some(Boolean));
 
   if (!projects.length) return '<p class="empty">لم يتم إدخال مشاريع.</p>';
-  return `<table>
-    <thead><tr><th>#</th><th>المشروع</th><th>الموقع</th><th>السنة</th><th>نطاق العمل</th></tr></thead>
+  return `<table class="projects">
+    <thead><tr><th>#</th><th>اسم المشروع</th><th>المدينة / الدولة</th><th>السنة</th><th>نطاق العمل</th></tr></thead>
     <tbody>${projects.map((project, index) => `<tr>
-      <td>${index + 1}</td><td>${show(project.name)}</td><td>${show(project.location)}</td>
-      <td>${show(project.year)}</td><td>${show(project.scope)}</td>
+      <td>${index + 1}</td>
+      <td>${show(project.name)}</td>
+      <td>${show(project.location)}</td>
+      <td>${show(project.year)}</td>
+      <td>${show(project.scope)}</td>
     </tr>`).join("")}</tbody>
   </table>`;
 }
 
+function photoMarkup(photos) {
+  if (!photos.length) return '<p class="empty">لم يتم إرفاق صور.</p>';
+  return `<div class="photo-grid">${photos.map((photo, index) => `<figure>
+    <img src="${esc(photo.signedUrl)}" alt="صورة مشروع ${index + 1}">
+    <figcaption>${index + 1}. ${esc(photo.original_name)}</figcaption>
+  </figure>`).join("")}</div>`;
+}
+
 export function renderPdfHtml({ submission, photos, logoDataUrl, fontDataUrl = "" }) {
-  const data = submission.form_data;
-  const photoMarkup = photos.length
-    ? `<div class="photo-grid">${photos.map((photo, index) => `<figure>
-        <img src="${esc(photo.signedUrl)}" alt="صورة مشروع ${index + 1}">
-        <figcaption>${index + 1}. ${esc(photo.original_name)}</figcaption>
-      </figure>`).join("")}</div>`
-    : '<p class="empty">لم يتم إرفاق صور.</p>';
-
+  const data = submission.form_data || {};
   return `<!doctype html>
-  <html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>
-    ${fontDataUrl ? `@font-face{font-family:PlexArabic;src:url(${fontDataUrl}) format('truetype');font-weight:100 900;}` : ""}
-    @page { size: A4; margin: 18mm 14mm 18mm; }
-    * { box-sizing: border-box; }
-    body { margin:0; color:#1c2b3a; font-family:PlexArabic,"Arial",sans-serif; font-size:10.5pt; line-height:1.65; }
-    header { display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid #0f4c7a; padding-bottom:10px; margin-bottom:18px; }
-    .brand { display:flex; align-items:center; gap:10px; }
-    .brand img { width:48px; height:48px; object-fit:contain; }
-    .brand-name { font-weight:700; color:#0f4c7a; font-size:14pt; }
-    .brand-sub { color:#5a6e80; font-size:8.5pt; }
-    .doc-title { text-align:left; }
-    .doc-title h1 { margin:0; font-size:15pt; color:#0f4c7a; }
-    .reference { direction:ltr; color:#5a6e80; font-size:9pt; }
-    section { break-inside:avoid; margin:0 0 14px; }
-    section.break-before { break-before:page; }
-    h2 { margin:0 0 8px; padding:7px 10px; font-size:11.5pt; color:#0f4c7a; background:#e8f2fb; border-right:4px solid #0f4c7a; }
-    .data-grid { display:grid; grid-template-columns:1fr 1fr; border:1px solid #d1dde8; border-bottom:0; }
-    .datum { display:grid; grid-template-columns:42% 58%; min-height:34px; border-bottom:1px solid #d1dde8; }
-    .datum:nth-child(odd) { border-left:1px solid #d1dde8; }
-    .datum-label { padding:7px 9px; color:#5a6e80; background:#f5f8fb; font-weight:600; }
-    .datum-value { padding:7px 9px; overflow-wrap:anywhere; white-space:pre-wrap; }
-    .full { grid-column:1/-1; }
-    table { width:100%; border-collapse:collapse; font-size:9pt; }
-    th { background:#e8f2fb; color:#0f4c7a; font-weight:700; }
-    th,td { border:1px solid #d1dde8; padding:6px 7px; text-align:right; vertical-align:top; }
-    .photo-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    figure { margin:0; border:1px solid #d1dde8; border-radius:6px; overflow:hidden; break-inside:avoid; }
-    figure img { width:100%; height:210px; display:block; object-fit:contain; background:#f5f8fb; }
-    figcaption { padding:6px 8px; color:#5a6e80; font-size:8.5pt; }
-    .declaration { padding:12px; border:1px solid #c2d5e8; background:#f0f5fa; border-radius:6px; }
-    .empty { color:#5a6e80; font-style:italic; }
-    footer { position:fixed; bottom:-12mm; right:0; left:0; color:#73879a; font-size:8pt; border-top:1px solid #d1dde8; padding-top:4px; display:flex; justify-content:space-between; }
-  </style></head><body>
-    <header>
-      <div class="brand"><img src="${logoDataUrl}" alt=""><div><div class="brand-name">المنابر للاستشارات الهندسية</div><div class="brand-sub">نموذج تأهيل مكتب هندسي</div></div></div>
-      <div class="doc-title"><h1>طلب تأهيل</h1><div class="reference">${esc(submission.reference)}</div></div>
-    </header>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+${fontDataUrl ? `@font-face{font-family:PlexArabic;src:url(${fontDataUrl}) format('truetype');font-weight:100 900;}` : ""}
+@page { size: A4; margin: 14mm 12mm 17mm; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: #152638;
+  font-family: PlexArabic, Arial, sans-serif;
+  font-size: 9.6pt;
+  line-height: 1.55;
+  background: #fff;
+}
+header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 3px solid #0f4c7a;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand img { width: 46px; height: 46px; object-fit: contain; }
+.brand-name { color: #0f4c7a; font-weight: 800; font-size: 13pt; }
+.brand-sub { color: #66788a; font-size: 8.4pt; }
+.meta { text-align: left; direction: ltr; color: #66788a; font-size: 8.7pt; }
+.meta strong { display: block; color: #0f4c7a; font-size: 14pt; direction: rtl; }
+section { margin: 0 0 11px; break-inside: avoid; }
+section.page { break-before: page; }
+h2 {
+  margin: 0 0 6px;
+  color: #0f4c7a;
+  font-size: 11.2pt;
+  font-weight: 800;
+}
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th, td {
+  border: 1px solid #cfdae5;
+  padding: 6px 8px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+th {
+  width: 18%;
+  color: #5d6d7e;
+  background: #f3f7fb;
+  font-weight: 800;
+}
+td { width: 32%; color: #101820; background: #fff; }
+.fields tr:nth-child(even) td { background: #fbfdff; }
+.paragraph-field {
+  border: 1px solid #cfdae5;
+  margin-top: -1px;
+  padding: 8px 10px;
+  break-inside: avoid;
+}
+.paragraph-field h3 {
+  margin: 0 0 4px;
+  color: #5d6d7e;
+  font-size: 9.6pt;
+}
+.paragraph-field div { white-space: pre-wrap; overflow-wrap: anywhere; }
+.projects th, .projects td { text-align: right; }
+.projects thead th {
+  color: #0f4c7a;
+  background: #eaf3fb;
+  width: auto;
+}
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid #cfdae5;
+  border-bottom: 0;
+}
+.staff-item { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid #cfdae5; }
+.staff-item:nth-child(odd) { border-left: 1px solid #cfdae5; }
+.staff-item b { padding: 6px 8px; background: #f3f7fb; color: #5d6d7e; }
+.staff-item span { padding: 6px 8px; min-width: 36px; text-align: center; }
+.photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+figure {
+  margin: 0;
+  border: 1px solid #cfdae5;
+  border-radius: 7px;
+  overflow: hidden;
+  break-inside: avoid;
+}
+figure img { width: 100%; height: 175px; object-fit: contain; display: block; background: #f4f8fb; }
+figcaption { padding: 5px 7px; color: #5d6d7e; font-size: 8.2pt; direction: ltr; text-align: right; }
+.declaration {
+  border: 1px solid #b9cee3;
+  background: #f1f6fb;
+  border-radius: 7px;
+  padding: 9px 11px;
+  margin-bottom: 7px;
+}
+.empty { color: #66788a; font-style: italic; }
+footer {
+  position: fixed;
+  bottom: -10mm;
+  right: 0;
+  left: 0;
+  border-top: 1px solid #cfdae5;
+  padding-top: 4px;
+  color: #7a8a9a;
+  font-size: 8pt;
+  display: flex;
+  justify-content: space-between;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" alt="">` : ""}
+    <div>
+      <div class="brand-name">المنابر للاستشارات الهندسية</div>
+      <div class="brand-sub">نموذج تأهيل مكتب هندسي</div>
+    </div>
+  </div>
+  <div class="meta"><strong>طلب تأهيل</strong><span>${esc(submission.reference)}</span></div>
+</header>
 
-    <section><h2>البيانات العامة للمكتب</h2><div class="data-grid">${rows([
-      ["اسم المكتب", data.office_name], ["الدولة", data.country], ["المدينة", data.city], ["العنوان", data.address],
-      ["الهاتف", data.phone], ["البريد الرسمي", data.email], ["الموقع الإلكتروني", data.website],
-      ["سنة التأسيس", data.founded], ["الشكل القانوني", data.legal_form]
-    ])}</div></section>
+<section>
+  <h2>البيانات العامة للمكتب</h2>
+  ${fieldTable([
+    ["اسم المكتب", data.office_name],
+    ["الدولة", data.country],
+    ["المدينة", data.city],
+    ["العنوان", data.address],
+    ["الهاتف", data.phone],
+    ["البريد الرسمي", data.email],
+    ["الموقع الإلكتروني", data.website],
+    ["سنة التأسيس", data.founded],
+    ["الشكل القانوني", data.legal_form]
+  ])}
+</section>
 
-    <section><h2>ممثل المكتب</h2><div class="data-grid">${rows([
-      ["الاسم", data.rep_name], ["المسمى الوظيفي", data.rep_title], ["الهاتف المباشر", data.rep_phone],
-      ["البريد الإلكتروني", data.rep_email], ["مفوض بالتعاقد", data.authorized]
-    ])}</div></section>
+<section>
+  <h2>ممثل المكتب</h2>
+  ${fieldTable([
+    ["الاسم", data.rep_name],
+    ["المسمى الوظيفي", data.rep_title],
+    ["الهاتف المباشر", data.rep_phone],
+    ["البريد الإلكتروني", data.rep_email],
+    ["مفوض بالتعاقد", data.authorized]
+  ])}
+</section>
 
-    <section><h2>التخصصات والخدمات</h2><div class="data-grid">${rows([
-      ["التخصصات", data.specializations], ["تخصصات أخرى", data.spec_other], ["وصف الخدمات", data.services_desc]
-    ])}</div></section>
+<section>
+  <h2>التخصصات والخدمات</h2>
+  ${fieldTable([
+    ["التخصصات", data.specializations],
+    ["تخصصات أخرى", data.spec_other]
+  ])}
+  ${paragraphField("وصف الخدمات", data.services_desc)}
+</section>
 
-    <section><h2>الخبرة والمشاريع</h2><div class="data-grid">${rows([
-      ["سنوات الخبرة", data.experience_years], ["أنواع المشاريع", data.project_types]
-    ])}</div>${projectRows(data)}</section>
+<section>
+  <h2>الخبرة والمشاريع</h2>
+  ${fieldTable([
+    ["سنوات الخبرة", data.experience_years],
+    ["أنواع المشاريع", data.project_types]
+  ])}
+  ${projectRows(data)}
+</section>
 
-    <section><h2>الكادر والأنظمة</h2><div class="data-grid">${rows([
-      ["إجمالي المهندسين", data.engineers_total], ["معماري", data.s_arch], ["إنشائي", data.s_struct],
-      ["ميكانيكا", data.s_mech], ["كهرباء", data.s_elec], ["سلامة", data.s_fire], ["BIM", data.s_bim],
-      ["تخصصات أخرى", data.s_other_staff], ["أعلى مؤهل", data.qualification], ["نظام جودة", data.has_qms],
-      ["تفاصيل نظام الجودة", data.qms_detail], ["البرامج", data.software], ["عمل من الباطن", data.worked_sub],
-      ["الالتزام بالجداول المتسارعة", data.schedule_cap], ["العمل ضمن فرق متعددة التخصصات", data.team_work]
-    ])}</div></section>
+<section>
+  <h2>الكادر الهندسي</h2>
+  ${fieldTable([["إجمالي المهندسين", data.engineers_total]])}
+  <div class="staff-grid">
+    ${[
+      ["معماري", data.s_arch],
+      ["إنشائي", data.s_struct],
+      ["ميكانيكا", data.s_mech],
+      ["كهرباء", data.s_elec],
+      ["سلامة", data.s_fire],
+      ["BIM", data.s_bim],
+      ["أخرى", data.s_other_staff]
+    ].map(([label, value]) => `<div class="staff-item"><b>${esc(label)}</b><span>${show(value)}</span></div>`).join("")}
+  </div>
+</section>
 
-    <section class="break-before"><h2>صور المشاريع</h2>${photoMarkup}</section>
+<section>
+  <h2>الأنظمة والقدرات</h2>
+  ${fieldTable([
+    ["أعلى مؤهل", data.qualification],
+    ["نظام جودة", data.has_qms],
+    ["تفاصيل نظام الجودة", data.qms_detail],
+    ["عمل من الباطن", data.worked_sub],
+    ["الالتزام بالجداول المتسارعة", data.schedule_cap],
+    ["العمل ضمن فرق متعددة التخصصات", data.team_work]
+  ])}
+  ${paragraphField("البرامج المستخدمة", data.software)}
+</section>
 
-    <section><h2>الإقرار</h2><div class="declaration">أقر مقدم الطلب بصحة ودقة جميع البيانات الواردة في هذه الاستمارة، ويتحمل المسؤولية عن صحتها.</div>
-      <div class="data-grid">${rows([["الاسم",data.sign_name],["الصفة",data.sign_title],["التاريخ",data.sign_date]])}</div>
-    </section>
-    <footer><span>المنابر للاستشارات الهندسية</span><span>${esc(submission.reference)}</span></footer>
-  </body></html>`;
+<section class="page">
+  <h2>الصور المرفقة (${photos.length})</h2>
+  ${photoMarkup(photos)}
+</section>
+
+<section>
+  <h2>الإقرار والتوقيع</h2>
+  <div class="declaration">أقر مقدم الطلب بصحة ودقة جميع البيانات الواردة في هذه الاستمارة، ويتحمل المسؤولية عن صحتها، ويفوض شركة المنابر للاستشارات الهندسية بمراجعة هذه البيانات وطلب أي مستندات إضافية أو مقابلات فنية عند الحاجة.</div>
+  ${fieldTable([
+    ["الاسم", data.sign_name],
+    ["الصفة / المسمى الوظيفي", data.sign_title],
+    ["التاريخ", data.sign_date]
+  ])}
+</section>
+
+<footer><span>المنابر للاستشارات الهندسية</span><span>${esc(submission.reference)}</span></footer>
+</body>
+</html>`;
 }

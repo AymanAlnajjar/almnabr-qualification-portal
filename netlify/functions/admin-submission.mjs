@@ -21,7 +21,10 @@ export default async function handler(request) {
     const signedPhotos = [];
     for (const photo of photos || []) {
       const { data: signed } = await supabase.storage.from("qualification-files").createSignedUrl(photo.storage_path, 900);
-      signedPhotos.push({ ...photo, url: signed?.signedUrl || "" });
+      const { data: downloadSigned } = await supabase.storage.from("qualification-files").createSignedUrl(photo.storage_path, 900, {
+        download: photo.original_name || `photo-${photo.sort_order + 1}`
+      });
+      signedPhotos.push({ ...photo, url: signed?.signedUrl || "", downloadUrl: downloadSigned?.signedUrl || signed?.signedUrl || "" });
     }
     let pdfUrl = "";
     if (submission.pdf_path) {
